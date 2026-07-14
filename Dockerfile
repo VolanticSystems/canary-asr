@@ -43,5 +43,22 @@ RUN python -c "import torch; assert torch.cuda.is_available() or True; print('to
  && python -c "from nemo.collections.asr.models import ASRModel, EncDecMultiTaskModel; print('nemo OK')" \
  && python -c "from pyannote.audio import Pipeline; print('pyannote OK')"
 
+# Pre-bake ASR model weights so a rented Vast instance never has to hit
+# HuggingFace at runtime. Added 2026-07-15 after repeated runs each burned
+# 10-15 min re-downloading Canary (~3.3 GB) + Parakeet (~2.4 GB) from HF's
+# throttled anonymous-download path. Adds ~6 GB to the image but that comes
+# from the fast GHCR pull, not the slow HF Hub pull.
+#
+# pyannote's diarization-3.1 weights are gated and need a token at runtime
+# (HF_TOKEN), so they are NOT baked in here — only the two ungated ASR models.
+RUN python -c "\
+from nemo.collections.asr.models import EncDecMultiTaskModel; \
+EncDecMultiTaskModel.from_pretrained('nvidia/canary-1b-flash'); \
+print('canary-1b-flash cached')" \
+ && python -c "\
+from nemo.collections.asr.models import ASRModel; \
+ASRModel.from_pretrained('nvidia/parakeet-tdt-0.6b-v3'); \
+print('parakeet-tdt-0.6b-v3 cached')"
+
 WORKDIR /root/work
 CMD ["/bin/bash"]

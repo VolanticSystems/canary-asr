@@ -22,9 +22,13 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Free runner disk space
-        # build-push-action otherwise runs into 14 GB disk pressure with our ~10 GB image
+        # build-push-action otherwise runs into disk pressure. Image grew to
+        # ~13 GB after baking in Canary + Parakeet weights (2026-07-15), so
+        # cleanup expanded beyond the original ~10 GB image's requirements.
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /usr/local/share/boost /usr/local/graalvm /usr/local/julia* \
+                      /opt/az /opt/microsoft /usr/lib/jvm /usr/local/lib/node_modules
           sudo docker image prune --all --force
           df -h
 
